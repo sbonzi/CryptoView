@@ -28,6 +28,8 @@ const createPortfolio = async (req, res) => {
       user_id,
       transactions: [],
     });
+
+    return res.status(200).json({portfolioID: portfolio.id});
   } catch (error) {
     res.status(400).json({ error: error.message });
   }

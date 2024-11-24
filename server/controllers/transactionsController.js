@@ -1,5 +1,6 @@
 const TransactionsSchema = require("../models/transactionsModel.js");
 const PortfolioSchema = require("../models/userPortfolioModel.js");
+const axios = require('axios');
 const mongoose = require("mongoose");
 
 const createTransaction = async (req, res) => {
@@ -55,9 +56,16 @@ const createTransaction = async (req, res) => {
   }
 };
 
+// 2. Simple Cryptocurrency Transaction Tracking:
+// The Challenge: Build an API endpoint that accepts a cryptocurrency address (Ethereum, for example). It should retrieve the last 5 transactions for that address from a blockchain explorer API (e.g., Etherscan) and store them in MongoDB. Allow users to query for transactions by address and date range.
+// Focus: Exposes knowledge of external APIs, data parsing, and efficient database storage.
+
 const getTransactions = async (req, res) => {
   try {
     const userId = req.user.id;
+    const {address, endDate, startDate} = req.query;
+
+    let now = endDate ? endDate : new Date();
 
     const userFolio = await PortfolioSchema.findOne({
       user_id: userId,
@@ -67,11 +75,33 @@ const getTransactions = async (req, res) => {
       return res.status(404).json({ error: "Portfolio not found" });
     }
 
-    res.status(200).json(userFolio.transactions);
+    const response = await axios.get(`https://api-sepolia.etherscan.io/api?module=account&action=txlist&address=${address}&sort=desc&apikey=${process.env.ETHERSCAN_API_KEY}`);
+    const transactions = response.data.result.slice(0,5);
+
+    const transactionsToStore = transactions.map(tx => ({ id: tx.hash ,quantity: 1, price: tx.value, spent: tx.gasUsed, date: new Date(parseInt(tx.timeStamp)  * 1000), user_id: userId }));
+    
+    try{
+      const transactionStored = await TransactionsSchema.insertMany(transactionsToStore);
+    }
+    catch (error)
+    {
+      console.log(error)      ;
+    }
+
+    const txQuery = {
+      user_id : userId,
+      date: startDate ? {
+         $gte: new Date(startDate),
+         $lte: new Date(now)
+      }: null
+    }
+    
+    const existingTxs = await TransactionsSchema.find(txQuery);
+
+    res.status(200).json(existingTxs);
   } catch (error) {
     res.status(500).json({
-      error:
-        "Une erreur s'est produite lors de la récupération du portfolio de l'utilisateur.",
+      error: `Unable to return transactions. Error: ${error}`,
     });
   }
 };

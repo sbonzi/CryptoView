@@ -4,6 +4,7 @@ const dotenv = require("dotenv");
 const process = require("process");
 const workoutRoutes = require("./routes/workouts.js");
 const usersRoutes = require("./routes/users.js");
+const tokensRoutes = require("./routes/Tokens.js");
 const transactionsRoutes = require("./routes/Transactions.js");
 const userPortfolio = require("./routes/userPortfolio.js");
 const mongoose = require("mongoose");
@@ -34,6 +35,7 @@ app.use("/api/workouts/", workoutRoutes);
 app.use("/api/portfolio/", userPortfolio);
 app.use("/api/transactions/", transactionsRoutes);
 app.use("/api/users/", usersRoutes);
+app.use("/api/tokens/", tokensRoutes);
 
 //connect to db et lancement du server
 mongoose
